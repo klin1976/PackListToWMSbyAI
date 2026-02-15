@@ -1,0 +1,109 @@
+{
+    "name": "Gemini 1.5 OCR (完整版)",
+    "nodes": [
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "incoming-label",
+                "options": {
+                    "binaryPropertyName": "data"
+                }
+            },
+            "id": "webhook-node",
+            "name": "接收標籤照片",
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 1,
+            "position": [
+                250,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=AIzaSyCcceugz4BlFb9eKvz60-cJVYjXS75j3mo",
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={{ {\n  \"contents\": [{\n    \"parts\": [\n      {\n        \"text\": \"你是工業來料標籤辨識專家。請從這張標籤圖片中提取以下 11 個標準欄位，並以嚴格的 JSON 格式回傳，不要有任何 Markdown 格式：\\n\\n1. SERIAL_NO\\n2. VENDOR\\n3. MATERIAL_NO\\n4. MTL_LOT_NO\\n5. IS_BONDED\\n6. METER\\n7. UNIT\\n8. INDICATOR\\n9. CLAIM_MEMO\\n10. MANUFACTURE_DATE (YYYY/MM/DD)\\n11. EXPIRATION_DATE (YYYY/MM/DD)\\n\\n此外請提供一個 confidence (0-1) 分數。\"\n      },\n      {\n        \"inline_data\": {\n          \"mime_type\": \"image/jpeg\",\n          \"data\": $binary.data.data\n        }\n      }\n    ]\n  }],\n  \"generationConfig\": {\n    \"temperature\": 0.1,\n    \"responseMimeType\": \"application/json\"\n  }\n} }}",
+                "options": {}
+            },
+            "id": "gemini-ocr",
+            "name": "Gemini OCR 辨識",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.1,
+            "position": [
+                500,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "jsCode": "const response = $input.first().json;\nconst content = response.candidates[0].content.parts[0].text;\nlet extraction;\n\ntry {\n  extraction = JSON.parse(content);\n} catch (e) {\n  // 處理可能的 Markdown 格式\n  const cleanContent = content.replace(/```json/g, '').replace(/```/g, '');\n  extraction = JSON.parse(cleanContent);\n}\n\nreturn [{\n  json: extraction\n}];"
+            },
+            "id": "parse-node",
+            "name": "解析 JSON 回應",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                750,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "number": [
+                        {
+                            "value1": "={{$json.confidence}}",
+                            "operation": "largerEqual",
+                            "value2": 0.9
+                        }
+                    ]
+                }
+            },
+            "id": "check-node",
+            "name": "信心分數檢查",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2,
+            "position": [
+                1000,
+                300
+            ]
+        }
+    ],
+    "connections": {
+        "接收標籤照片": {
+            "main": [
+                [
+                    {
+                        "node": "Gemini OCR 辨識",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Gemini OCR 辨識": {
+            "main": [
+                [
+                    {
+                        "node": "解析 JSON 回應",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "解析 JSON 回應": {
+            "main": [
+                [
+                    {
+                        "node": "信心分數檢查",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    }
+}

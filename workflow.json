@@ -1,0 +1,141 @@
+{
+  "name": "來料標籤 OCR 自動化 (Gemini)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "incoming-label",
+        "options": {
+          "binaryPropertyName": "data"
+        }
+      },
+      "id": "webhook-node",
+      "name": "接收標籤照片",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent",
+        "sendQueryParameters": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "key",
+              "value": "={{$env.GEMINI_API_KEY}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "contents",
+              "value": "={{ [{\n  \"parts\": [\n    {\n      \"text\": \"你是工業來料標籤辨識專家。請從這張標籤圖片中提取以下 11 個標準欄位，並以嚴格的 JSON 格式回傳：\\n\\n1. SERIAL_NO (流水號)\\n2. VENDOR (供應商：永寬/上慶/南亞pet/南亞RF/新綜/上豪/玻力特/立大)\\n3. MATERIAL_NO (料號)\\n4. MTL_LOT_NO (批號)\\n5. IS_BONDED (保稅：Y/N)\\n6. METER (米數/數量)\\n7. UNIT (單位)\\n8. INDICATOR (指標)\\n9. CLAIM_MEMO (備註)\\n10. MANUFACTURE_DATE (製造日期：YYYY/MM/DD)\\n11. EXPIRATION_DATE (有效期限：YYYY/MM/DD)\\n\\n此外請提供一個 confidence (0-1) 分數。\\n\\n**特別規則：**\\n- 找不到的欄位請填空字元 \\\"\\\"\\n- 如果辨識不清楚，請在備註中註明。\\n- 絕對不要回傳 JSON 標記區塊以外的文字。\"\n    },\n    {\n      \"inline_data\": {\n        \"mime_type\": \"image/jpeg\",\n        \"data\": $binary.data.toString('base64')\n      }\n    }\n  ]\n}] }}\n"
+            },
+            {
+              "name": "generationConfig",
+              "value": "={{ {\n  \"temperature\": 0.1,\n  \"responseMimeType\": \"application/json\"\n} }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "gemini-node",
+      "name": "Gemini OCR 辨識",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        500,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\nconst content = response.candidates[0].content.parts[0].text;\nconst extraction = JSON.parse(content);\n\nreturn [{\n  json: extraction\n}];"
+      },
+      "id": "parse-node",
+      "name": "解析 JSON 回應",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        750,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{$json.confidence}}",
+              "operation": "largerEqual",
+              "value2": 0.9
+            }
+          ]
+        }
+      },
+      "id": "check-node",
+      "name": "信心分數檢查",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1000,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 接下來您可以串接：\n1. **WMS WebService** (HTTP Request)\n2. **Google Sheets** (Append Row)\n3. **Microsoft Teams** (Send Message)"
+      },
+      "id": "sticky-note",
+      "name": "Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1250,
+        150
+      ]
+    }
+  ],
+  "connections": {
+    "接收標籤照片": {
+      "main": [
+        [
+          {
+            "node": "Gemini OCR 辨識",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini OCR 辨識": {
+      "main": [
+        [
+          {
+            "node": "解析 JSON 回應",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "解析 JSON 回應": {
+      "main": [
+        [
+          {
+            "node": "信心分數檢查",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

@@ -1,0 +1,22 @@
+{
+    "nodes": [
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=AIzaSyCcceugz4BlFb9eKvz60-cJVYjXS75j3mo",
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={{ {\n  \"contents\": [{\n    \"parts\": [\n      {\n        \"text\": \"你是工業來料標籤辨識專家。請從這張標籤圖片中提取以下 11 個標準欄位，並以嚴格的 JSON 格式回傳，不要有任何 Markdown 格式：\\n\\n1. SERIAL_NO\\n2. VENDOR\\n3. MATERIAL_NO\\n4. MTL_LOT_NO\\n5. IS_BONDED\\n6. METER\\n7. UNIT\\n8. INDICATOR\\n9. CLAIM_MEMO\\n10. MANUFACTURE_DATE (YYYY/MM/DD)\\n11. EXPIRATION_DATE (YYYY/MM/DD)\\n\\n此外請提供一個 confidence (0-1) 分數。\"\n      },\n      {\n        \"inline_data\": {\n          \"mime_type\": \"image/jpeg\",\n          \"data\": $binary.data.data\n        }\n      }\n    ]\n  }],\n  \"generationConfig\": {\n    \"temperature\": 0.1,\n    \"responseMimeType\": \"application/json\"\n  }\n} }}",
+                "options": {}
+            },
+            "id": "gemini-ocr-fix",
+            "name": "Gemini OCR 辨識",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.1,
+            "position": [
+                500,
+                300
+            ]
+        }
+    ]
+}

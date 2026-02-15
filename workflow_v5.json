@@ -1,0 +1,134 @@
+{
+    "name": "Gemini OCR v5 (修正 Binary)",
+    "nodes": [
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "incoming-label",
+                "options": {
+                    "binaryPropertyName": "data",
+                    "rawBody": true
+                }
+            },
+            "id": "webhook-node",
+            "name": "接收標籤照片",
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 1,
+            "position": [
+                250,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "jsCode": "// 取得 binary 資料的 key\nconst item = $input.first();\nconst binaryKey = Object.keys(item.binary)[0];\nconst mimeType = item.binary[binaryKey].mimeType || 'image/jpeg';\n\n// 使用 n8n 內建方法取得真正的 Buffer\nconst binaryBuffer = await this.helpers.getBinaryDataBuffer(0, binaryKey);\nconst base64Image = binaryBuffer.toString('base64');\n\nconst requestBody = {\n  contents: [{\n    parts: [\n      {\n        text: '你是工業來料標籤辨識專家。請從這張標籤圖片中提取以下 11 個標準欄位，並以嚴格的 JSON 格式回傳：\\n\\n1. SERIAL_NO (流水號)\\n2. VENDOR (供應商)\\n3. MATERIAL_NO (料號)\\n4. MTL_LOT_NO (批號)\\n5. IS_BONDED (保稅 Y/N)\\n6. METER (米數)\\n7. UNIT (單位)\\n8. INDICATOR (指標)\\n9. CLAIM_MEMO (備註)\\n10. MANUFACTURE_DATE (YYYY/MM/DD)\\n11. EXPIRATION_DATE (YYYY/MM/DD)\\n\\n此外請提供一個 confidence (0-1) 分數。找不到的欄位請填空字串。'\n      },\n      {\n        inline_data: {\n          mime_type: mimeType,\n          data: base64Image\n        }\n      }\n    ]\n  }],\n  generationConfig: {\n    temperature: 0.1,\n    responseMimeType: 'application/json'\n  }\n};\n\nreturn [{ json: { body: requestBody } }];"
+            },
+            "id": "prepare-body",
+            "name": "準備請求資料",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                500,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=AIzaSyCcceugz4BlFb9eKvz60-cJVYjXS75j3mo",
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={{ JSON.stringify($json.body) }}",
+                "options": {}
+            },
+            "id": "gemini-api",
+            "name": "Gemini OCR 辨識",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.1,
+            "position": [
+                750,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "jsCode": "const response = $input.first().json;\nconst content = response.candidates[0].content.parts[0].text;\nlet extraction;\ntry {\n  extraction = JSON.parse(content);\n} catch (e) {\n  const clean = content.replace(/```json/g, '').replace(/```/g, '').trim();\n  extraction = JSON.parse(clean);\n}\nreturn [{ json: extraction }];"
+            },
+            "id": "parse-response",
+            "name": "解析 JSON 回應",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                1000,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "number": [
+                        {
+                            "value1": "={{$json.confidence}}",
+                            "operation": "largerEqual",
+                            "value2": 0.9
+                        }
+                    ]
+                }
+            },
+            "id": "check-confidence",
+            "name": "信心分數檢查",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2,
+            "position": [
+                1250,
+                300
+            ]
+        }
+    ],
+    "connections": {
+        "接收標籤照片": {
+            "main": [
+                [
+                    {
+                        "node": "準備請求資料",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "準備請求資料": {
+            "main": [
+                [
+                    {
+                        "node": "Gemini OCR 辨識",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Gemini OCR 辨識": {
+            "main": [
+                [
+                    {
+                        "node": "解析 JSON 回應",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "解析 JSON 回應": {
+            "main": [
+                [
+                    {
+                        "node": "信心分數檢查",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    }
+}
