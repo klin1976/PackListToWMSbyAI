@@ -40,13 +40,22 @@
 協助建立並推送到遠端 GitHub 儲存庫。
 
 **AI 回應：**
-我已成功初始化 Git 儲存庫，並透過 `gh` CLI 建立了遠端 GitHub 儲存庫 `https://github.com/klin1976/PackListToWMSbyAI`，並將所有現有檔案（包括實施計畫與對話紀錄）推送至 GitHub。
+我已成功初始化 Git 儲存庫，並透過 `gh` CLI 建立了遠端 GitHub 儲存庫 `https://github.com/klin1976/PackListToWMSbyAI`，並將所有現有檔案推送至 GitHub。
 
 ---
 
-### [2026-02-15 20:48] 更新與同步
+### [2026-02-15 21:06] Phase 0 環境建置啟動
+**用戶提問：**
+開始協助處理 Phase 0：環境建置（安裝 Docker 與取得 API Key）
+
+**AI 回應：**
+經檢查系統尚未安裝 Docker 與 WSL。我提供了一套詳細的操作指南，包含執行 `wsl --install`、下載 Docker Desktop 以及在 Google AI Studio 申請 Gemini API Key 的步驟。
+
+---
+
+### [2026-02-15 21:51] 更新與同步
 **用戶提問：**
 「更新對話紀錄」「推送對話紀錄到 GitHub」
 
 **AI 回應：**
-正在更新 `ConversationRecord.txt/md` 並同步推送至 GitHub。
+正在更新對話內容並同步推送至 GitHub 儲存庫。
